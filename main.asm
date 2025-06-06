@@ -7,18 +7,16 @@ start:
     mov ax, screen.address                      ; set the video mem address
     mov es, ax
 
-    mov ax, board.address
-    mov ds, ax
-
 prepare_loop:
     mov cx, board.row_count
-    xor si, si
+    mov si, board.bricks
     .row:
         push cx
         mov cx, board.column_count
         .column:
-            mov al, cl
-            mov byte [si], al
+            ; rdtsc 
+            ; and ah, 0b111
+            mov byte [si], cl
             inc si
         loop .column
         pop cx
@@ -32,8 +30,33 @@ game_loop:
         dec di
         jnz .loop
 
+update_ball:
+    mov ax, [ball.x]
+    mov bl, [ball.y]
+    .check_wall_collision_hor:
+        cmp ax, screen.w - ball.w                       ; check if hit right wall(accounting for ball width)
+        jge .bounce_hor
+        test ax, ax                                     ; check if hit left wall(which would be 0)
+        jnz .check_wall_collision_vert
+        .bounce_hor:
+            neg word [ball.x_speed]                         ; invert the ball speed
+    .check_wall_collision_vert:
+        test bl, bl                                     ; test if hit top of the screen
+        jnz .draw_ball
+        neg byte [ball.y_speed]                         ; invert the vertical speed
+    .draw_ball:
+    xor bh, bh
+    mov cx, ball.size
+    mov dl, ball.color
+    call draw_rect
+    mov ax, [ball.x_speed]
+    add [ball.x], ax
+    mov al, [ball.y_speed]
+    add [ball.y], al
+
+
 update_bricks:
-    xor si, si
+    mov si, board.bricks
     mov cx, board.column_count                      ; first layer of loop will go over the columns, call it 'i'
     .vert:
         push cx                                     ; preserve i because we need it for 
@@ -45,14 +68,16 @@ update_bricks:
             push cx
             dec cx
             imul bx, cx, brick.h
-            mov dl, [ds:si]
+            mov dl, [si]
             mov cx, brick.size
-            call draw_rect
+            ;call draw_rect
             inc si
             pop cx
         loop .hor
         pop cx
     loop .vert
+
+
 
 ; mov ax, 2
 ; mov bx, 5
@@ -120,10 +145,25 @@ brick:
     .size equ (.h << 8) | .w 
 
 board:
-    .address equ 0x500
+    .address equ 0x0500
     .column_count equ screen.w / brick.w
     .row_count equ 5
     .total equ .column_count * .row_count
+    .bricks times .total db 0
+
+paddle:
+    .x dw screen.w / 2
+    .y equ 180
+
+ball:
+    .w equ 5
+    .h equ 5
+    .size equ (.h << 8) | .w
+    .color equ 15                                       ; white ball
+    .x dw screen.w / 2 - .w / 2                         ; x has to be a word because max screen width is 320 which would not fit into a byte 
+    .y db screen.h - 20                                 ; y
+    .x_speed dw 1
+    .y_speed db -1
 
 screen:
     .address equ 0xa000
