@@ -61,6 +61,8 @@ update_paddle:
 prepare_ball:
     mov ax, [ball.x]
     mov bl, [ball.y]
+    mov [vars.prevx], ax
+    mov [vars.prevy], bl
 
 ; the check is
 ; if  ball.x >= paddle.x and ball.x <= paddle.x + paddle.w
@@ -118,8 +120,12 @@ update_bricks:
             dec cx
             imul bx, cx, brick.h
             mov dl, [si]
+            test dl, dl
+            jz .next_brick
             mov cx, brick.size
-            ;call draw_rect
+            call draw_rect
+            call check_brick_collision
+            .next_brick:
             inc si
             pop cx
         loop .hor
@@ -144,6 +150,80 @@ frame_delay:
 .spin:
     jmp .spin                       ; Spin forever
 
+
+; logic in c
+; if (ballx >= left && ballx <= right)
+; {
+;     if ((prevy <= top && bally >= top) || (prevy >= bottom && bally <= bottom))
+;     {
+;         ball->speed.y *= -1;
+;         goto collision;
+;     }
+; }
+; if (bally >= top && bally <= bottom)
+; {
+;     if ((prevx <= left && ballx >= left) || (prevx >= right && ballx <= right))
+;     {
+;         ball->speed.x *= -1;
+;         goto collision;
+;     }
+; }
+; goto nocollision;
+; 
+;
+; ax - brick.x - left
+; bl - brick.y - top
+check_brick_collision:
+    mov dx, [ball.x]                                ; dx = ball.x
+    mov cl, [ball.y]                                ; cl = ball.y
+    mov di, ax                                      ; di = right
+    add di, brick.w                                 ; di = ball.x + brick.w
+    mov bh, bl                                      ; bh = bottom
+    add bh, brick.h                                 ; bh = ball.y + brick.h
+    
+    .check_hor:
+        ; ball.x >= left && ball.x <= right
+        cmp dx, ax
+        jb .check_vert
+        cmp dx, di
+        ja .check_vert
+            cmp [vars.prevy], bl                        ; prevy <= top 
+            ja .check_hor_alt
+            cmp cl, bl                                  ; && ball.y >= top
+            jae .bounce_vert
+        .check_hor_alt:
+            cmp [vars.prevy], bh
+            jb .check_vert
+            cmp cl, bh
+            ja .check_vert
+        .bounce_vert:
+            neg byte [ball.y_speed]
+            jmp .collision
+    .check_vert:
+        ; ball.y >= top && ball.y <= bottom
+        cmp cl, bl
+        jb .no_collision
+        cmp cl, bh
+        ja .no_collision
+            cmp [vars.prevx], ax
+            ja .check_vert_alt
+            cmp dx, ax
+            jae .bounce_hor
+        .check_vert_alt:
+            cmp [vars.prevx], di
+            jb .no_collision
+            cmp dx, di
+            ja .no_collision
+        .bounce_hor:
+            neg word [ball.x_speed]
+    .collision:
+        mov byte [si], 0
+    .no_collision:
+        ret
+
+vars:
+    .prevx dw 0
+    .prevy db 0
 
 ; ax - x, preserved
 ; bx - y, preserved
