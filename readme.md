@@ -22,16 +22,16 @@ As well as there are some issues with how collision is handled because the ball 
 # Running 
 This needs to be assembled to be run, which can be done using provided makefile by running `make` in the root folder of the project.
 ```sh
-git clone https://github.com/MetalPizzaCat/bootsector-pong.git
-cd bootsector-pong
+git clone https://github.com/MetalPizzaCat/bootsector-breakout
+cd bootsector-breakout
 make
 ```
 
 This can then be used with [qemu](https://www.qemu.org/) or anything similar to be run. 
 Full example(excluding installation of tools) would be:
 ```sh
-git clone https://github.com/MetalPizzaCat/bootsector-pong.git
-cd bootsector-pong
+git clone https://github.com/MetalPizzaCat/bootsector-breakout
+cd bootsector-breakout
 make run
 
 # Hex dump of the game
