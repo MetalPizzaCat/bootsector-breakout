@@ -282,20 +282,20 @@ draw_rect:
     ret
 
 
-; al - char
-; bl - color
-; dl - x
-; dh - y
-plot_char:
-    mov bh, 0                   ; page zero
-    push ax
-    mov ax, 0x200               ; move cursor
-    int 0x10
-    pop ax
-    mov ah, 0xa                 ; plot character
-    mov cx, 1                   ; repeat once
-    int 0x10
-    ret
+; ; al - char
+; ; bl - color
+; ; dl - x
+; ; dh - y
+; plot_char:
+;     mov bh, 0                   ; page zero
+;     push ax
+;     mov ax, 0x200               ; move cursor
+;     int 0x10
+;     pop ax
+;     mov ah, 0xa                 ; plot character
+;     mov cx, 1                   ; repeat once
+;     int 0x10
+;     ret
 
 
 
