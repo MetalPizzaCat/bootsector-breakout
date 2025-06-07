@@ -33,37 +33,60 @@ game_loop:
 update_paddle:
     mov bx, [paddle.x]
     in al, keyboard.port
+    cmp al, keyboard.start
+    je .start_ball
     cmp al, keyboard.left
     je .move_left
     cmp al, keyboard.right
     je .move_right
     jmp .draw
 
+    .start_ball:
+        mov byte [ball.y_speed], -1
+        mov byte [ball.active], 1
+        jmp .draw
     .move_left:
-        test bx, bx
-        jz .draw
-        dec word [paddle.x]
+        cmp bx, 1
+        jle .draw
+        ;dec word [paddle.x]
+        sub word [paddle.x], paddle.speed
         jmp .draw
 
     .move_right:
         cmp bx, screen.w - paddle.w
         jge .draw
-        inc word [paddle.x]
-        
+        add word [paddle.x], paddle.speed
+        ;inc word [paddle.x]
+    
     .draw:
         mov ax, bx
         mov bx, paddle.y
         mov dl, paddle.color
         mov cx, paddle.size
         call draw_rect
-
+    
 
 prepare_ball:
+    .check_active:
+    mov dl, [ball.active]
+    test dl, dl
+    jnz .set_vars
+    mov byte [ball.y], ball.y_start
+    mov ax, [paddle.x]
+    add ax, paddle.w / 2 - ball.w / 2
+    mov [ball.x], ax
+
+    .set_vars:
     mov ax, [ball.x]
     mov bl, [ball.y]
     mov [vars.prevx], ax
     mov [vars.prevy], bl
 
+    
+    jnz check_paddle_collision
+    jmp handle_ball.draw_ball
+
+ 
 ; the check is
 ; if  ball.x >= paddle.x and ball.x <= paddle.x + paddle.w
 ; and ball.y >= paddle.y and ball.y <= paddle.y + paddle.h then
@@ -84,6 +107,7 @@ check_paddle_collision:
     .end:
 
 handle_ball:
+    
     .check_wall_collision_hor:
         cmp ax, screen.w - ball.w                           ; check if hit right wall(accounting for ball width)
         jge .bounce_hor
@@ -92,6 +116,8 @@ handle_ball:
         .bounce_hor:
             neg word [ball.x_speed]                         ; invert the ball speed
     .check_wall_collision_vert:
+        cmp bl, screen.h
+        jae ball_died
         test bl, bl                                         ; test if hit top of the screen
         jnz .draw_ball
         neg byte [ball.y_speed]                             ; invert the vertical speed
@@ -104,6 +130,7 @@ handle_ball:
     add [ball.x], ax
     mov al, [ball.y_speed]
     add [ball.y], al
+
 
 
 update_bricks:
@@ -151,6 +178,10 @@ frame_delay:
     jmp .spin                       ; Spin forever
 
 
+ball_died:
+    mov byte [ball.active], 0
+    jmp frame_delay
+
 ; logic in c
 ; if (ballx >= left && ballx <= right)
 ; {
@@ -180,7 +211,7 @@ check_brick_collision:
     add di, brick.w                                 ; di = ball.x + brick.w
     mov bh, bl                                      ; bh = bottom
     add bh, brick.h                                 ; bh = ball.y + brick.h
-    
+    ; these checks use jb, ja instead of jl, jg because we have to work with unsigned values
     .check_hor:
         ; ball.x >= left && ball.x <= right
         cmp dx, ax
@@ -287,16 +318,19 @@ paddle:
     .h equ 5
     .color equ 15
     .size equ (.h << 8) | .w
+    .speed equ 2
 
 ball:
+    .y_start equ screen.h - 30
     .w equ 5
     .h equ 5
     .size equ (.h << 8) | .w
     .color equ 15                                       ; white ball
     .x dw screen.w / 2 - .w / 2                         ; x has to be a word because max screen width is 320 which would not fit into a byte 
-    .y db screen.h - 30                                 ; y
+    .y db .y_start                                      ; y
     .x_speed dw 1
     .y_speed db -1
+    .active db 0
 
 screen:
     .address equ 0xa000
